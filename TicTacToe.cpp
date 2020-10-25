@@ -5,11 +5,26 @@
 #include <sstream>
 #include <string>
 
+// SDL2 includes
+#include <SDL.h>
+#include <SDL_image.h>
+
+#undef main
+
+/* Global Constants */
+const int SCREEN_WIDTH = 640;
+const int SCREEN_HEIGHT = 480;
+
+// size of each cell
+const int CELL_WIDTH = SCREEN_WIDTH / 3;
+const int CELL_HEIGHT = SCREEN_HEIGHT / 3;
+
 std::string board[3][3] = { {"1","2","3"}, 
 							{"4","5","6"}, 
 							{"7","8","9"} 
 };
 
+/* CONSOLE IMPLEMENTATION */
 // Print the board and its current layout
 void PrintBoard();
 // Check if there is a row of three
@@ -19,10 +34,88 @@ void Restart();
 // Check valid player input
 bool CheckValidInput(std::string input);
 
+/* SDL2 IMPLEMENTATION */
+SDL_Window* gWindow = NULL;
+SDL_Renderer* gRenderer = NULL;
+
+// Enumeration for game state
+enum GAME_STATE {
+	RUNNING_STATE = 0,
+	PLAYER_X_WINS = 1,
+	PLAYER_O_WINS = 2,
+	TIE = 3,
+	QUIT = 4
+};
+
+// Enumeration for board entry
+enum BOARD_ENTRY {
+	EMPTY = 0,
+	PLAYER_X = 1,
+	PLAYER_O = 2
+};
+
+// Initialize game board to be empty
+int guiBoard[9] = { 
+	PLAYER_X, EMPTY, EMPTY,
+	EMPTY, PLAYER_X, EMPTY,
+	PLAYER_X, EMPTY, EMPTY 
+};
+
+int currentPlayer = PLAYER_X;
+
+int currentBoardState = RUNNING_STATE;
+
+void DrawGrid();  // draws the lines
+void CellClicked(float cellWidth, float cellHeight);
+void DrawX(int row, int column);
+void DrawO(int row, int column);
+void DrawBoard();  // this differs from draw grid in that it will update the spaces when a player plays the space
+
 bool quit = false;
 
-int main() {
+/* Helper Function to draw circles */
+void drawCircle(int xc, int yc, int x, int y);
 
+int main() {
+	// Lazy initialization bc we know little errors will happen
+	SDL_Init(SDL_INIT_EVERYTHING);
+	gWindow = SDL_CreateWindow("Tic Tac Toe", 100, 100, SCREEN_WIDTH, SCREEN_HEIGHT, NULL);
+	gRenderer = SDL_CreateRenderer(gWindow, 0, NULL);
+
+	// Quit flag
+	bool quit = false;
+
+	while (currentBoardState != QUIT) {
+		// Event checking
+		SDL_Event e;
+
+		while (SDL_PollEvent(&e) != 0) {
+			switch (e.type) {
+				case SDL_QUIT:
+					currentBoardState = QUIT;
+					break;
+				case SDL_MOUSEBUTTONDOWN:
+					std::cout << "Cell: " << (e.button.y / CELL_HEIGHT) << ", " << (e.button.x / CELL_WIDTH) << std::endl;
+					break;
+				default:
+					break;
+			}
+		}
+
+		// Set render draw color
+		SDL_SetRenderDrawColor(gRenderer, 0, 0, 0, 0xFF);
+
+		SDL_RenderClear(gRenderer);
+
+		DrawGrid();
+		DrawBoard();
+
+		SDL_RenderPresent(gRenderer);
+
+	}
+
+
+	/* CONSOLE/ DEBUG WINDOW IMPLEMNTATION
 	PrintBoard();
 
 	std::string p1;
@@ -93,6 +186,7 @@ int main() {
 			continue;
 		}
 	}
+	*/
 
 	return 0;
 }
@@ -208,4 +302,79 @@ bool CheckValidInput(std::string input) {
 	}
 
 	return true;
+}
+
+/***** GUI / IMAGE IMPLEMENTATION *****/
+void DrawGrid() {
+	// Set color to grey
+	SDL_SetRenderDrawColor(gRenderer, 0xC0, 0xC0, 0xC0, 0xFF);
+
+	// Drawing the rows
+	for (size_t i = 1; i < 3; i++) {
+		// (screen width / 3) * i
+		int tempRow = (SCREEN_WIDTH / 3) * i;
+		SDL_RenderDrawLine(gRenderer, tempRow, 0, tempRow, SCREEN_HEIGHT);
+	}
+
+	// Drawing the columns
+	for (size_t i = 1; i < 3; i++) {
+		int tempCol = (SCREEN_HEIGHT / 3) * i;
+		SDL_RenderDrawLine(gRenderer, 0, tempCol, SCREEN_WIDTH, tempCol);
+	}
+}
+
+void CellClicked(float cellWidth, float cellHeight) {
+
+}
+
+void DrawX(int row, int column) {
+	// Get the length of the side of a smaller square inside one of our cells
+	const float halfBounds = fmin(CELL_WIDTH, CELL_HEIGHT) * 0.25;
+	// Center of the cell using centerX and centerY
+	const float centerX = CELL_WIDTH * 0.5 + column * CELL_WIDTH;
+	const float centerY = CELL_HEIGHT * 0.5 + row * CELL_HEIGHT;
+
+	SDL_SetRenderDrawColor(gRenderer, 0xC0, 0xC0, 0xC0, 0xFF);
+	// Draws the top left to the bottom right
+	SDL_RenderDrawLine(gRenderer, centerX - halfBounds, centerY - halfBounds, centerX + halfBounds, centerY + halfBounds);
+	SDL_RenderDrawLine(gRenderer, centerX + halfBounds, centerY - halfBounds, centerX - halfBounds, centerY + halfBounds);
+
+	//SDL_RenderDrawLine(gRenderer, halfBounds - centerX, halfBounds - centerY, halfBounds + centerX, halfBounds + centerY);
+}
+
+void DrawO(int row, int column) {
+	// Get the length of the side of a smaller square inside one of our cells
+	const float halfBounds = fmin(CELL_WIDTH, CELL_HEIGHT) * 0.25;
+	// Center of the cell using centerX and centerY
+	const float centerX = CELL_WIDTH * 0.5 + column * CELL_WIDTH;
+	const float centerY = CELL_HEIGHT * 0.5 + row * CELL_HEIGHT;
+}
+
+void DrawBoard() {
+	for (size_t i = 0; i < 3; i++) {
+		for (size_t j = 0; j < 3; j++) {
+			switch (guiBoard[i * 3 + j]) {
+				case PLAYER_X:
+					DrawX(i, j);
+					break;
+				case PLAYER_O:
+					DrawO(i, j);
+					break;
+				default:
+					break;
+			}
+		}
+	}
+}
+
+/* Helper function for drawing a circle (based on Bresenham's Circle Algo) */
+void drawCircle(int xc, int yc, int x, int y) {
+	SDL_RenderDrawPoint(gRenderer, xc + x, xc + y);
+	SDL_RenderDrawPoint(gRenderer, xc + x, xc + y);
+	SDL_RenderDrawPoint(gRenderer, xc + x, xc + y);
+	SDL_RenderDrawPoint(gRenderer, xc + x, xc + y);
+	SDL_RenderDrawPoint(gRenderer, xc + x, xc + y);
+	SDL_RenderDrawPoint(gRenderer, xc + x, xc + y);
+	SDL_RenderDrawPoint(gRenderer, xc + x, xc + y);
+	SDL_RenderDrawPoint(gRenderer, xc + x, xc + y);
 }
