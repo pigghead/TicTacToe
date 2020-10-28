@@ -115,7 +115,6 @@ int main() {
 
 	}
 
-
 	/* CONSOLE/ DEBUG WINDOW IMPLEMNTATION
 	PrintBoard();
 
@@ -327,19 +326,17 @@ void DrawGrid() {
 void CellClicked(int cellWidth, int cellHeight) {
 	// Changed player turn
 	if (currentPlayer == PLAYER_X) {
-		guiBoard[cellWidth * 3 + cellHeight] = PLAYER_X;
-		currentPlayer = PLAYER_O;
+		if (guiBoard[cellWidth * 3 + cellHeight] == EMPTY) {
+			guiBoard[cellWidth * 3 + cellHeight] = PLAYER_X;
+			currentPlayer = PLAYER_O;
+		}
 	} 
 	else if (currentPlayer == PLAYER_O) {
-		guiBoard[cellWidth * 3 + cellHeight] = PLAYER_O;
-		currentPlayer = PLAYER_X;
-	}
-
-	/*for (size_t i = 0; i < 2; i++) {
-		for (size_t j = 0; j < 2; j++) {
-			std::cout << guiBoard[i * 3 + j] << std::endl;
+		if (guiBoard[cellWidth * 3 + cellHeight] == EMPTY) {
+			guiBoard[cellWidth * 3 + cellHeight] = PLAYER_O;
+			currentPlayer = PLAYER_X;
 		}
-	}*/
+	}
 }
 
 void DrawX(int row, int column) {
@@ -399,19 +396,19 @@ void drawCircle(int xc, int yc, int x, int y) {
 
 void BresenhamDraw(int xc, int yc, int r) {
 	int x = 0, y = r;
-	int d = 3 - (2 * r);
+	int d = 3 - 2 * r;
 	drawCircle(xc, yc, x, y);
 	while (y >= x) {
 		// increment the value of x
 		x++;
 
-		// if d < 0, set d to (4x)+6
+		// if d < 0, set d to 
 		if (d < 0) {
-			d = (4 * x) + 6;
+			d = d + 4 * x + 6;
 		}
 		else {
 			y--;
-			d = d * (x - y) + 10;
+			d = d + 4 * (x - y) + 10;
 		}
 		drawCircle(xc, yc, x, y);
 	}
