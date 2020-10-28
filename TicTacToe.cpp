@@ -56,9 +56,9 @@ enum BOARD_ENTRY {
 
 // Initialize game board to be empty
 int guiBoard[9] = { 
-	PLAYER_X, EMPTY, EMPTY,
-	EMPTY, PLAYER_X, EMPTY,
-	PLAYER_X, EMPTY, EMPTY 
+	EMPTY, EMPTY, EMPTY,
+	EMPTY, EMPTY, EMPTY,
+	EMPTY, EMPTY, EMPTY 
 };
 
 int currentPlayer = PLAYER_X;
@@ -66,7 +66,7 @@ int currentPlayer = PLAYER_X;
 int currentBoardState = RUNNING_STATE;
 
 void DrawGrid();  // draws the lines
-void CellClicked(float cellWidth, float cellHeight);
+void CellClicked(int cellWidth, int cellHeight);
 void DrawX(int row, int column);
 void DrawO(int row, int column);
 void DrawBoard();  // this differs from draw grid in that it will update the spaces when a player plays the space
@@ -75,6 +75,7 @@ bool quit = false;
 
 /* Helper Function to draw circles */
 void drawCircle(int xc, int yc, int x, int y);
+void BresenhamDraw(int xc, int yc, int r);
 
 int main() {
 	// Lazy initialization bc we know little errors will happen
@@ -95,7 +96,7 @@ int main() {
 					currentBoardState = QUIT;
 					break;
 				case SDL_MOUSEBUTTONDOWN:
-					std::cout << "Cell: " << (e.button.y / CELL_HEIGHT) << ", " << (e.button.x / CELL_WIDTH) << std::endl;
+					CellClicked(e.button.y / CELL_HEIGHT, e.button.x / CELL_WIDTH);
 					break;
 				default:
 					break;
@@ -323,8 +324,22 @@ void DrawGrid() {
 	}
 }
 
-void CellClicked(float cellWidth, float cellHeight) {
+void CellClicked(int cellWidth, int cellHeight) {
+	// Changed player turn
+	if (currentPlayer == PLAYER_X) {
+		guiBoard[cellWidth * 3 + cellHeight] = PLAYER_X;
+		currentPlayer = PLAYER_O;
+	} 
+	else if (currentPlayer == PLAYER_O) {
+		guiBoard[cellWidth * 3 + cellHeight] = PLAYER_O;
+		currentPlayer = PLAYER_X;
+	}
 
+	/*for (size_t i = 0; i < 2; i++) {
+		for (size_t j = 0; j < 2; j++) {
+			std::cout << guiBoard[i * 3 + j] << std::endl;
+		}
+	}*/
 }
 
 void DrawX(int row, int column) {
@@ -334,12 +349,10 @@ void DrawX(int row, int column) {
 	const float centerX = CELL_WIDTH * 0.5 + column * CELL_WIDTH;
 	const float centerY = CELL_HEIGHT * 0.5 + row * CELL_HEIGHT;
 
-	SDL_SetRenderDrawColor(gRenderer, 0xC0, 0xC0, 0xC0, 0xFF);
+	SDL_SetRenderDrawColor(gRenderer, 0xFF, 0x00, 0x00, 0xFF);
 	// Draws the top left to the bottom right
 	SDL_RenderDrawLine(gRenderer, centerX - halfBounds, centerY - halfBounds, centerX + halfBounds, centerY + halfBounds);
 	SDL_RenderDrawLine(gRenderer, centerX + halfBounds, centerY - halfBounds, centerX - halfBounds, centerY + halfBounds);
-
-	//SDL_RenderDrawLine(gRenderer, halfBounds - centerX, halfBounds - centerY, halfBounds + centerX, halfBounds + centerY);
 }
 
 void DrawO(int row, int column) {
@@ -348,6 +361,8 @@ void DrawO(int row, int column) {
 	// Center of the cell using centerX and centerY
 	const float centerX = CELL_WIDTH * 0.5 + column * CELL_WIDTH;
 	const float centerY = CELL_HEIGHT * 0.5 + row * CELL_HEIGHT;
+
+	BresenhamDraw(centerX, centerY, 55);
 }
 
 void DrawBoard() {
@@ -369,12 +384,35 @@ void DrawBoard() {
 
 /* Helper function for drawing a circle (based on Bresenham's Circle Algo) */
 void drawCircle(int xc, int yc, int x, int y) {
-	SDL_RenderDrawPoint(gRenderer, xc + x, xc + y);
-	SDL_RenderDrawPoint(gRenderer, xc + x, xc + y);
-	SDL_RenderDrawPoint(gRenderer, xc + x, xc + y);
-	SDL_RenderDrawPoint(gRenderer, xc + x, xc + y);
-	SDL_RenderDrawPoint(gRenderer, xc + x, xc + y);
-	SDL_RenderDrawPoint(gRenderer, xc + x, xc + y);
-	SDL_RenderDrawPoint(gRenderer, xc + x, xc + y);
-	SDL_RenderDrawPoint(gRenderer, xc + x, xc + y);
+	SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0xFF, 0xFF);
+
+	SDL_RenderDrawPoint(gRenderer, xc + x, yc + y);
+	SDL_RenderDrawPoint(gRenderer, xc - x, yc + y);
+	SDL_RenderDrawPoint(gRenderer, xc + x, yc - y);
+	SDL_RenderDrawPoint(gRenderer, xc - x, yc - y);
+	
+	SDL_RenderDrawPoint(gRenderer, xc + y, yc + x);
+	SDL_RenderDrawPoint(gRenderer, xc - y, yc + x);
+	SDL_RenderDrawPoint(gRenderer, xc + y, yc - x);
+	SDL_RenderDrawPoint(gRenderer, xc - y, yc - x);
+}
+
+void BresenhamDraw(int xc, int yc, int r) {
+	int x = 0, y = r;
+	int d = 3 - (2 * r);
+	drawCircle(xc, yc, x, y);
+	while (y >= x) {
+		// increment the value of x
+		x++;
+
+		// if d < 0, set d to (4x)+6
+		if (d < 0) {
+			d = (4 * x) + 6;
+		}
+		else {
+			y--;
+			d = d * (x - y) + 10;
+		}
+		drawCircle(xc, yc, x, y);
+	}
 }
