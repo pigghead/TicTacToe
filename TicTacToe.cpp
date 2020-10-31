@@ -9,6 +9,8 @@
 #include <SDL.h>
 #include <SDL_image.h>
 
+#include "CircleHelper.h"
+
 #undef main
 
 /* Global Constants */
@@ -18,6 +20,8 @@ const int SCREEN_HEIGHT = 480;
 // size of each cell
 const int CELL_WIDTH = SCREEN_WIDTH / 3;
 const int CELL_HEIGHT = SCREEN_HEIGHT / 3;
+
+static CircleHelper c;
 
 std::string board[3][3] = { {"1","2","3"}, 
 							{"4","5","6"}, 
@@ -67,9 +71,12 @@ int currentBoardState = RUNNING_STATE;
 
 void DrawGrid();  // draws the lines
 void CellClicked(int cellWidth, int cellHeight);
+void ChangePlayerTurn();
 void DrawX(int row, int column);
 void DrawO(int row, int column);
 void DrawBoard();  // this differs from draw grid in that it will update the spaces when a player plays the space
+int GuiCheckWin(int currPlayer);
+void ResetGame();
 
 bool quit = false;
 
@@ -95,8 +102,14 @@ int main() {
 				case SDL_QUIT:
 					currentBoardState = QUIT;
 					break;
-				case SDL_MOUSEBUTTONDOWN:
+				case SDL_MOUSEBUTTONDOWN:  // Check win, if no win then proceed
 					CellClicked(e.button.y / CELL_HEIGHT, e.button.x / CELL_WIDTH);
+					if (GuiCheckWin(currentPlayer) == 1) {
+						ResetGame();
+					}
+					else {
+						ChangePlayerTurn();
+					}
 					break;
 				default:
 					break;
@@ -325,17 +338,27 @@ void DrawGrid() {
 
 void CellClicked(int cellWidth, int cellHeight) {
 	// Changed player turn
-	if (currentPlayer == PLAYER_X) {
-		if (guiBoard[cellWidth * 3 + cellHeight] == EMPTY) {
-			guiBoard[cellWidth * 3 + cellHeight] = PLAYER_X;
-			currentPlayer = PLAYER_O;
+	if (currentBoardState == RUNNING_STATE) {
+		if (currentPlayer == PLAYER_X) {
+			if (guiBoard[cellWidth * 3 + cellHeight] == EMPTY) {
+				guiBoard[cellWidth * 3 + cellHeight] = PLAYER_X;
+			}
+		}
+		else if (currentPlayer == PLAYER_O) {
+			if (guiBoard[cellWidth * 3 + cellHeight] == EMPTY) {
+				guiBoard[cellWidth * 3 + cellHeight] = PLAYER_O;
+			}
 		}
 	} 
+}
+
+void ChangePlayerTurn() {
+	if (currentPlayer == PLAYER_X) {
+		currentPlayer = PLAYER_O;
+	}
+
 	else if (currentPlayer == PLAYER_O) {
-		if (guiBoard[cellWidth * 3 + cellHeight] == EMPTY) {
-			guiBoard[cellWidth * 3 + cellHeight] = PLAYER_O;
-			currentPlayer = PLAYER_X;
-		}
+		currentPlayer = PLAYER_X;
 	}
 }
 
@@ -359,7 +382,8 @@ void DrawO(int row, int column) {
 	const float centerX = CELL_WIDTH * 0.5 + column * CELL_WIDTH;
 	const float centerY = CELL_HEIGHT * 0.5 + row * CELL_HEIGHT;
 
-	BresenhamDraw(centerX, centerY, 55);
+	//BresenhamDraw(centerX, centerY, 55);
+	c.BresenhamCircleDraw(gRenderer, centerX, centerY, 55);
 }
 
 void DrawBoard() {
@@ -379,37 +403,35 @@ void DrawBoard() {
 	}
 }
 
-/* Helper function for drawing a circle (based on Bresenham's Circle Algo) */
-void drawCircle(int xc, int yc, int x, int y) {
-	SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0xFF, 0xFF);
+int GuiCheckWin(int currPlayer) {
+	int column = 0;
+	int row = 0;
+	// Check if there are three in a row or a column
+	for (size_t i = 0; i < 3; i++) {
+		for (size_t j = 0; j < 3; j++) {
+			if (guiBoard[i * 3 + j] == currPlayer) {
+				row++;
+			}
 
-	SDL_RenderDrawPoint(gRenderer, xc + x, yc + y);
-	SDL_RenderDrawPoint(gRenderer, xc - x, yc + y);
-	SDL_RenderDrawPoint(gRenderer, xc + x, yc - y);
-	SDL_RenderDrawPoint(gRenderer, xc - x, yc - y);
-	
-	SDL_RenderDrawPoint(gRenderer, xc + y, yc + x);
-	SDL_RenderDrawPoint(gRenderer, xc - y, yc + x);
-	SDL_RenderDrawPoint(gRenderer, xc + y, yc - x);
-	SDL_RenderDrawPoint(gRenderer, xc - y, yc - x);
+			if (guiBoard[j * 3 + i] == currPlayer) {
+				column++;
+			}
+
+			if (column >= 3 || row >= 3) {
+				return 1;
+			}
+		}
+		column = 0;
+		row = 0;
+	}
+
+	return 0;
 }
 
-void BresenhamDraw(int xc, int yc, int r) {
-	int x = 0, y = r;
-	int d = 3 - 2 * r;
-	drawCircle(xc, yc, x, y);
-	while (y >= x) {
-		// increment the value of x
-		x++;
-
-		// if d < 0, set d to 
-		if (d < 0) {
-			d = d + 4 * x + 6;
-		}
-		else {
-			y--;
-			d = d + 4 * (x - y) + 10;
-		}
-		drawCircle(xc, yc, x, y);
+void ResetGame() {
+	currentPlayer = PLAYER_X;
+	currentBoardState = RUNNING_STATE;
+	for (size_t i = 0; i < 9; i++) {
+		guiBoard[i] = EMPTY;
 	}
 }
