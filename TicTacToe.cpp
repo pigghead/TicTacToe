@@ -10,6 +10,8 @@
 #include <SDL_image.h>
 
 #include "CircleHelper.h"
+#include "DrawBoard.h"
+#include "Game.h"
 
 #undef main
 
@@ -22,6 +24,11 @@ const int CELL_WIDTH = SCREEN_WIDTH / 3;
 const int CELL_HEIGHT = SCREEN_HEIGHT / 3;
 
 static CircleHelper c;
+static DrawBoard db;
+
+unsigned int r = 0xC0;
+unsigned int g = 0xC0;
+unsigned int b = 0xC0;
 
 std::string board[3][3] = { {"1","2","3"}, 
 							{"4","5","6"}, 
@@ -73,16 +80,13 @@ void DrawGrid();  // draws the lines
 void CellClicked(int cellWidth, int cellHeight);
 void ChangePlayerTurn();
 void DrawX(int row, int column);
-void DrawO(int row, int column);
-void DrawBoard();  // this differs from draw grid in that it will update the spaces when a player plays the space
+//void DrawO(int row, int column);
+void DrawwBoard();  // this differs from draw grid in that it will update the spaces when a player plays the space
 int GuiCheckWin(int currPlayer);
+void GuiReportWinningPlayer(int currPlayer);
 void ResetGame();
 
 bool quit = false;
-
-/* Helper Function to draw circles */
-void drawCircle(int xc, int yc, int x, int y);
-void BresenhamDraw(int xc, int yc, int r);
 
 int main() {
 	// Lazy initialization bc we know little errors will happen
@@ -105,7 +109,7 @@ int main() {
 				case SDL_MOUSEBUTTONDOWN:  // Check win, if no win then proceed
 					CellClicked(e.button.y / CELL_HEIGHT, e.button.x / CELL_WIDTH);
 					if (GuiCheckWin(currentPlayer) == 1) {
-						ResetGame();
+						GuiReportWinningPlayer(currentPlayer);
 					}
 					else {
 						ChangePlayerTurn();
@@ -121,8 +125,8 @@ int main() {
 
 		SDL_RenderClear(gRenderer);
 
-		DrawGrid();
-		DrawBoard();
+		db.DrawGrid(gRenderer, r, g, b);
+		db.UpdateBoard(gRenderer, guiBoard);
 
 		SDL_RenderPresent(gRenderer);
 
@@ -350,6 +354,12 @@ void CellClicked(int cellWidth, int cellHeight) {
 			}
 		}
 	} 
+	else if (currentBoardState == PLAYER_O_WINS) {
+		ResetGame();
+	}
+	else if (currentBoardState == PLAYER_X_WINS) {
+		ResetGame();
+	}
 }
 
 void ChangePlayerTurn() {
@@ -376,8 +386,6 @@ void DrawX(int row, int column) {
 }
 
 void DrawO(int row, int column) {
-	// Get the length of the side of a smaller square inside one of our cells
-	const float halfBounds = fmin(CELL_WIDTH, CELL_HEIGHT) * 0.25;
 	// Center of the cell using centerX and centerY
 	const float centerX = CELL_WIDTH * 0.5 + column * CELL_WIDTH;
 	const float centerY = CELL_HEIGHT * 0.5 + row * CELL_HEIGHT;
@@ -386,7 +394,7 @@ void DrawO(int row, int column) {
 	c.BresenhamCircleDraw(gRenderer, centerX, centerY, 55);
 }
 
-void DrawBoard() {
+/*void DrawwBoard() {
 	for (size_t i = 0; i < 3; i++) {
 		for (size_t j = 0; j < 3; j++) {
 			switch (guiBoard[i * 3 + j]) {
@@ -394,18 +402,21 @@ void DrawBoard() {
 					DrawX(i, j);
 					break;
 				case PLAYER_O:
-					DrawO(i, j);
+					//DrawO(i, j);
+					db.DrawO(gRenderer, i, j);
 					break;
 				default:
 					break;
 			}
 		}
 	}
-}
+}*/
 
 int GuiCheckWin(int currPlayer) {
 	int column = 0;
 	int row = 0;
+	int diag1 = 0;
+	int diag2 = 0;
 	// Check if there are three in a row or a column
 	for (size_t i = 0; i < 3; i++) {
 		for (size_t j = 0; j < 3; j++) {
@@ -423,9 +434,21 @@ int GuiCheckWin(int currPlayer) {
 		}
 		column = 0;
 		row = 0;
+
+		if (guiBoard[i * 3 + i] == currPlayer) {
+			diag1++;
+		}
+
+		if (guiBoard[i * 3 + 3 - i - 1] == currPlayer) {
+			diag2++;
+		}
 	}
 
-	return 0;
+	return diag1 >= 3 || diag2 >= 3;
+}
+
+void GuiReportWinningPlayer(int currPlayer) {
+	currentBoardState = currPlayer;
 }
 
 void ResetGame() {
